@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-cream text-charcoal font-sans antialiased;
+    overflow-x: hidden;
+  }
+  ::selection {
+    @apply bg-brand/20 text-brand;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .clip-reveal {
+    clip-path: inset(0 100% 0 0);
+  }
+}
