@@ -315,8 +315,7 @@ export default function Cotizador() {
             {/* Extras */}
             <div>
               <p className="text-xs font-semibold tracking-wide text-charcoal/50 uppercase mb-4">Extras opcionales</p>
-              {(
-                <div className="space-y-3">
+              <div className="space-y-3">
                   {EXTRAS.map((e) => {
                     const disabled = isExtraDisabled(e.id, pkg)
                     const hint     = disabledLabel(e.id, pkg)
@@ -353,7 +352,7 @@ export default function Cotizador() {
                       </label>
                     )
                   })}
-                </div>
+              </div>
             </div>
 
             {/* Chisperos counter */}
