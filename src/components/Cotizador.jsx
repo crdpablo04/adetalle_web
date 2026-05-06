@@ -6,21 +6,27 @@ import { MessageCircle, ChevronDown, Plus, Minus } from 'lucide-react'
 gsap.registerPlugin(ScrollTrigger)
 
 const PRECIOS_BASE = {
-  iglu:        { clasico: 5500, premium: 8500, vip: 14500 },
-  invernadero: { clasico: 6500, premium: 9500, vip: 15500 },
-  ruinas:      { clasico: 6500, premium: 9500, vip: 15500 },
-  picnic:      { clasico: 5500, premium: 8500, vip: 14500 },
+  iglu:        { clasico: 5500, premium: 8500, vip: 14500, express: 3950 },
+  invernadero: { clasico: 6500, premium: 9500, vip: 15500, express: 3950 },
+  ruinas:      { clasico: 6500, premium: 9500, vip: 15500, express: 3950 },
+  picnic:      { clasico: 5500, premium: 8500, vip: 14500, express: 3950 },
 }
 
 const ROSAS_PRECIOS = { 24: 520, 30: 700, 40: 850, 50: 1100, 100: 1450, 150: 1850, 200: 2300 }
 
+// Rosas ya incluidas por paquete y su precio de referencia para descuento
+const ROSAS_INCLUIDAS_QTY    = { clasico: 0, premium: 24, vip: 48, express: 0 }
+const ROSAS_INCLUIDAS_PRECIO = { clasico: 0, premium: 520, vip: 1050, express: 0 }
+
+const MUSIC_IDS = ['saxofon', 'mariachi', 'trovador']
+
 const EXTRAS = [
-  { id: 'petalos',    label: 'Pétalos adicionales',      precio: 1000, type: 'other' },
-  { id: 'saxofon',   label: 'Saxofón (2 horas)',          precio: 3500, type: 'music' },
-  { id: 'mariachi',  label: 'Mariachi (10 canciones)',    precio: 3800, type: 'music' },
-  { id: 'trovador',  label: 'Trovador (2 horas)',         precio: 3500, type: 'music' },
-  { id: 'fotografia',label: 'Fotografía profesional',     precio: 1000, type: 'media' },
-  { id: 'video',     label: 'Video profesional',          precio: 1000, type: 'media' },
+  { id: 'petalos',    label: 'Pétalos adicionales',   precio: 1000, type: 'other' },
+  { id: 'saxofon',   label: 'Saxofón (1 hora)',        precio: 3500, type: 'music' },
+  { id: 'mariachi',  label: 'Mariachi (10 canciones)', precio: 3800, type: 'music' },
+  { id: 'trovador',  label: 'Trovador (2 horas)',      precio: 3500, type: 'music' },
+  { id: 'fotografia',label: 'Fotografía profesional',  precio: 1000, type: 'media' },
+  { id: 'video',     label: 'Video profesional',       precio: 1000, type: 'media' },
 ]
 
 const LOCS = [
@@ -31,6 +37,7 @@ const LOCS = [
 ]
 
 const PKGS = [
+  { id: 'express', label: 'Express' },
   { id: 'clasico', label: 'Clásico' },
   { id: 'premium', label: 'Premium' },
   { id: 'vip',     label: 'VIP' },
@@ -44,20 +51,51 @@ const OCASIONES = [
   'Otro',
 ]
 
-const getMaxChisperos = (pkg) => pkg === 'vip' ? 0 : pkg === 'premium' ? 2 : 4
+const getMaxChisperos = (pkg) => {
+  if (pkg === 'vip') return 0
+  if (pkg === 'premium') return 2
+  return 4 // clasico y express
+}
 
 const isExtraDisabled = (id, pkg) => {
-  if (id === 'petalos'    && (pkg === 'premium' || pkg === 'vip')) return true
-  if (id === 'fotografia' && (pkg === 'premium' || pkg === 'vip')) return true
-  if (id === 'video'      && pkg === 'vip')                        return true
+  if (MUSIC_IDS.includes(id) && pkg === 'vip') return true
+  if (id === 'petalos'     && (pkg === 'premium' || pkg === 'vip')) return true
+  if (id === 'fotografia'  && (pkg === 'premium' || pkg === 'vip')) return true
+  if (id === 'video'       && pkg === 'vip') return true
   return false
 }
 
 const disabledLabel = (id, pkg) => {
+  if (MUSIC_IDS.includes(id) && pkg === 'vip') return 'Incluido en el paquete'
   if (id === 'petalos'    && (pkg === 'premium' || pkg === 'vip')) return 'Incluido en el paquete'
   if (id === 'fotografia' && (pkg === 'premium' || pkg === 'vip')) return 'Incluido en el paquete'
-  if (id === 'video'      && pkg === 'vip')                        return 'Incluido en el paquete'
+  if (id === 'video'      && pkg === 'vip') return 'Incluido en el paquete'
   return null
+}
+
+const getRosaOptions = (pkg) => {
+  const minQty   = ROSAS_INCLUIDAS_QTY[pkg]    || 0
+  const discount = ROSAS_INCLUIDAS_PRECIO[pkg] || 0
+  const raw = [
+    { id: '24',  qty: 24,  precio: 520  },
+    { id: '30',  qty: 30,  precio: 700  },
+    { id: '40',  qty: 40,  precio: 850  },
+    { id: '50',  qty: 50,  precio: 1100 },
+    { id: '100', qty: 100, precio: 1450 },
+    { id: '150', qty: 150, precio: 1850 },
+    { id: '200', qty: 200, precio: 2300 },
+  ].filter((o) => o.qty > minQty)
+
+  return [
+    { id: 'none', label: 'Sin rosas adicionales' },
+    ...raw.map((o) => {
+      const net = o.precio - discount
+      const label = discount > 0
+        ? `${o.qty} rosas — +$${net.toLocaleString('es-MX')} (c/desc.)`
+        : `${o.qty} rosas — $${o.precio.toLocaleString('es-MX')}`
+      return { id: o.id, label }
+    }),
+  ]
 }
 
 function SelectField({ label, value, onChange, options }) {
@@ -78,6 +116,21 @@ function SelectField({ label, value, onChange, options }) {
         </select>
         <ChevronDown size={15} className="absolute right-3 top-1/2 -translate-y-1/2 text-charcoal/40 pointer-events-none" />
       </div>
+    </div>
+  )
+}
+
+function DateField({ label, value, onChange }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-xs font-semibold tracking-wide text-charcoal/50 uppercase">{label}</label>
+      <input
+        type="date"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-white border border-charcoal/10 rounded-xl px-4 py-3 text-sm text-charcoal font-medium
+          focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand/40 transition-all cursor-pointer"
+      />
     </div>
   )
 }
@@ -109,34 +162,31 @@ function Counter({ value, onChange, min = 0, max = 20 }) {
 export default function Cotizador() {
   const sectionRef = useRef(null)
 
-  const [loc, setLoc]       = useState('iglu')
-  const [pkg, setPkg]       = useState('premium')
-  const [ocasion, setOcasion] = useState('Pedida de matrimonio')
-  const [extras, setExtras] = useState({})
+  const [loc, setLoc]             = useState('iglu')
+  const [pkg, setPkg]             = useState('premium')
+  const [ocasion, setOcasion]     = useState('Pedida de matrimonio')
+  const [fecha, setFecha]         = useState('')
+  const [extras, setExtras]       = useState({})
   const [chisperos, setChisperos] = useState(0)
-  const [rosas, setRosas]   = useState('none')
+  const [rosas, setRosas]         = useState('none')
 
-  // Enforce restrictions when package changes
   useEffect(() => {
-    setExtras(prev => {
+    setExtras((prev) => {
       const next = { ...prev }
-      EXTRAS.forEach(e => {
-        if (isExtraDisabled(e.id, pkg)) delete next[e.id]
-      })
+      EXTRAS.forEach((e) => { if (isExtraDisabled(e.id, pkg)) delete next[e.id] })
       return next
     })
-    setChisperos(c => Math.min(c, getMaxChisperos(pkg)))
+    setChisperos((c) => Math.min(c, getMaxChisperos(pkg)))
+    setRosas('none')
   }, [pkg])
 
   const toggleExtra = (extra) => {
     if (isExtraDisabled(extra.id, pkg)) return
-
     if (extra.type === 'music') {
-      setExtras(prev => {
+      setExtras((prev) => {
         const next = { ...prev }
-        const musicIds = ['saxofon', 'mariachi', 'trovador']
         if (!prev[extra.id]) {
-          musicIds.forEach(m => delete next[m])
+          MUSIC_IDS.forEach((m) => delete next[m])
           next[extra.id] = true
         } else {
           delete next[extra.id]
@@ -144,31 +194,40 @@ export default function Cotizador() {
         return next
       })
     } else {
-      setExtras(prev => ({ ...prev, [extra.id]: !prev[extra.id] }))
+      setExtras((prev) => ({ ...prev, [extra.id]: !prev[extra.id] }))
     }
   }
 
-  const basePrice     = PRECIOS_BASE[loc][pkg]
-  const extrasTotal   = EXTRAS.reduce((acc, e) => acc + (extras[e.id] ? e.precio : 0), 0)
+  const basePrice      = PRECIOS_BASE[loc][pkg]
+  const extrasTotal    = EXTRAS.reduce((acc, e) => acc + (extras[e.id] ? e.precio : 0), 0)
   const chisperosTotal = chisperos * 200
-  const rosasTotal    = rosas !== 'none' ? ROSAS_PRECIOS[rosas] : 0
-  const total         = basePrice + extrasTotal + chisperosTotal + rosasTotal
+  const rosasTotal     = rosas !== 'none'
+    ? Math.max(0, ROSAS_PRECIOS[rosas] - (ROSAS_INCLUIDAS_PRECIO[pkg] || 0))
+    : 0
+  const total          = basePrice + extrasTotal + chisperosTotal + rosasTotal
 
   const pkgLabel = PKGS.find((p) => p.id === pkg)?.label
   const locLabel = LOCS.find((l) => l.id === loc)?.label
   const maxChisp = getMaxChisperos(pkg)
 
+  const formatDate = (d) => {
+    if (!d) return null
+    const [y, m, day] = d.split('-')
+    return `${day}/${m}/${y}`
+  }
+
   const buildWhatsApp = () => {
     const extrasLines = [
       ...EXTRAS.filter((e) => extras[e.id]).map((e) => `  - ${e.label}: $${e.precio.toLocaleString('es-MX')}`),
       chisperos > 0 ? `  - Chisperos adicionales (${chisperos}): $${chisperosTotal.toLocaleString('es-MX')}` : null,
-      rosas !== 'none' ? `  - Rosas (${rosas}): $${rosasTotal.toLocaleString('es-MX')}` : null,
+      rosas !== 'none' ? `  - Rosas (${rosas}): +$${rosasTotal.toLocaleString('es-MX')}` : null,
     ].filter(Boolean)
 
     const msg = [
       `Hola Adetalle! Me interesa reservar una experiencia:`,
       ``,
       `Ocasión: ${ocasion}`,
+      formatDate(fecha) ? `Fecha deseada: ${formatDate(fecha)}` : null,
       `Locación: ${locLabel}`,
       `Paquete: ${pkgLabel}`,
       extrasLines.length > 0 ? `\nExtras:\n${extrasLines.join('\n')}` : null,
@@ -228,52 +287,73 @@ export default function Cotizador() {
               options={OCASIONES}
             />
 
+            <DateField
+              label="Fecha deseada"
+              value={fecha}
+              onChange={setFecha}
+            />
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <SelectField label="Locación" value={loc} onChange={setLoc} options={LOCS} />
               <SelectField label="Paquete"  value={pkg} onChange={setPkg}  options={PKGS} />
             </div>
 
+            {/* Express info callout */}
+            {pkg === 'express' && (
+              <div className="bg-rose/8 border border-rose/20 rounded-xl px-5 py-4">
+                <p className="text-xs font-semibold text-rose mb-2">Paquete Express incluye únicamente:</p>
+                <ul className="text-xs text-charcoal/70 space-y-1">
+                  <li>· Letrero luminoso a elegir</li>
+                  <li>· Decoración</li>
+                  <li>· 2 chisperos</li>
+                  <li>· 30 minutos en la locación</li>
+                </ul>
+                <p className="text-xs text-charcoal/45 mt-2">Sin cena, mesero ni bebidas.</p>
+              </div>
+            )}
+
             {/* Extras */}
             <div>
               <p className="text-xs font-semibold tracking-wide text-charcoal/50 uppercase mb-4">Extras opcionales</p>
-              <div className="space-y-3">
-                {EXTRAS.map((e) => {
-                  const disabled = isExtraDisabled(e.id, pkg)
-                  const hint     = disabledLabel(e.id, pkg)
-                  return (
-                    <label
-                      key={e.id}
-                      className={`flex items-center justify-between gap-4 ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer group'}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div
-                          onClick={() => !disabled && toggleExtra(e)}
-                          className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-all ${
-                            extras[e.id]
-                              ? 'bg-brand border-brand'
-                              : disabled
-                              ? 'border-charcoal/20'
-                              : 'border-charcoal/20 group-hover:border-brand/50'
-                          }`}
-                        >
-                          {extras[e.id] && (
-                            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                              <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          )}
+              {(
+                <div className="space-y-3">
+                  {EXTRAS.map((e) => {
+                    const disabled = isExtraDisabled(e.id, pkg)
+                    const hint     = disabledLabel(e.id, pkg)
+                    return (
+                      <label
+                        key={e.id}
+                        className={`flex items-center justify-between gap-4 ${disabled ? 'cursor-not-allowed opacity-40' : 'cursor-pointer group'}`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            onClick={() => !disabled && toggleExtra(e)}
+                            className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 transition-all ${
+                              extras[e.id]
+                                ? 'bg-brand border-brand'
+                                : disabled
+                                ? 'border-charcoal/20'
+                                : 'border-charcoal/20 group-hover:border-brand/50'
+                            }`}
+                          >
+                            {extras[e.id] && (
+                              <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                                <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              </svg>
+                            )}
+                          </div>
+                          <div>
+                            <span className="text-sm text-charcoal/80">{e.label}</span>
+                            {hint && <span className="block text-xs text-brand/60">{hint}</span>}
+                          </div>
                         </div>
-                        <div>
-                          <span className="text-sm text-charcoal/80">{e.label}</span>
-                          {hint && <span className="block text-xs text-brand/60">{hint}</span>}
-                        </div>
-                      </div>
-                      <span className="text-xs font-semibold text-charcoal/40 whitespace-nowrap">
-                        +${e.precio.toLocaleString('es-MX')}
-                      </span>
-                    </label>
-                  )
-                })}
-              </div>
+                        <span className="text-xs font-semibold text-charcoal/40 whitespace-nowrap">
+                          +${e.precio.toLocaleString('es-MX')}
+                        </span>
+                      </label>
+                    )
+                  })}
+                </div>
             </div>
 
             {/* Chisperos counter */}
@@ -282,8 +362,10 @@ export default function Cotizador() {
                 <div>
                   <p className="text-sm text-charcoal/80">Chisperos adicionales</p>
                   <p className="text-xs text-charcoal/40">
-                    $200 c/u · Máx. {maxChisp} adicionales
-                    {maxChisp === 0 && ' (VIP ya incluye 6)'}
+                    {pkg === 'vip'
+                      ? '$200 c/u · Máx. 0 adicionales (VIP ya incluye 6)'
+                      : `$200 c/u · Máx. ${maxChisp} adicionales${pkg === 'express' ? ' (Express ya incluye 2)' : ''}`
+                    }
                   </p>
                 </div>
                 <Counter value={chisperos} onChange={setChisperos} max={maxChisp} />
@@ -292,28 +374,24 @@ export default function Cotizador() {
 
             {/* Rosas selector */}
             <div className="pt-2 border-t border-charcoal/8">
-              <SelectField
-                label="Rosas adicionales"
-                value={rosas}
-                onChange={setRosas}
-                options={[
-                  { id: 'none', label: 'Sin rosas adicionales' },
-                  { id: '24',   label: '24 rosas — $520' },
-                  { id: '30',   label: '30 rosas — $700' },
-                  { id: '40',   label: '40 rosas — $850' },
-                  { id: '50',   label: '50 rosas — $1,100' },
-                  { id: '100',  label: '100 rosas — $1,450' },
-                  { id: '150',  label: '150 rosas — $1,850' },
-                  { id: '200',  label: '200 rosas — $2,300' },
-                ]}
-              />
-              <p className="mt-2 text-xs text-charcoal/45 leading-relaxed">
-                En caso de que tu paquete ya incluya un ramo y desees uno más grande,
-                el precio se ajustará según el tabulador.
-              </p>
-              <p className="mt-1 text-xs text-charcoal/45">
-                Pregunta por otras opciones de flores.
-              </p>
+                <SelectField
+                  label="Rosas adicionales"
+                  value={rosas}
+                  onChange={setRosas}
+                  options={getRosaOptions(pkg)}
+                />
+                {(pkg === 'premium' || pkg === 'vip') && (
+                  <p className="mt-2 text-xs text-brand/60 leading-relaxed">
+                    El precio ya incluye el descuento por las rosas de tu paquete.
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-charcoal/45 leading-relaxed">
+                  En caso de que tu paquete ya incluya un ramo y desees uno más grande,
+                  el precio se ajustará según el tabulador.
+                </p>
+                <p className="mt-1 text-xs text-charcoal/45">
+                  Pregunta por otras opciones de flores.
+                </p>
             </div>
           </div>
 
