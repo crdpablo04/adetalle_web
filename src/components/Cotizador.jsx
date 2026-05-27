@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
-import { MessageCircle, ChevronDown, Plus, Minus } from 'lucide-react'
+import { MessageCircle, ChevronDown, Plus, Minus, Tag, X } from 'lucide-react'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -50,6 +50,12 @@ const OCASIONES = [
   'Pedida de noviazgo',
   'Otro',
 ]
+
+const CODIGOS_DESCUENTO = {
+  'ADETALLE10': { porcentaje: 10, label: '10% de descuento' },
+  'AMOR15':     { porcentaje: 15, label: '15% de descuento' },
+  'ESPECIAL20': { porcentaje: 20, label: '20% de descuento' },
+}
 
 const getMaxChisperos = (pkg) => {
   if (pkg === 'vip') return 0
@@ -169,6 +175,9 @@ export default function Cotizador() {
   const [extras, setExtras]       = useState({})
   const [chisperos, setChisperos] = useState(0)
   const [rosas, setRosas]         = useState('none')
+  const [codigoInput, setCodigoInput]   = useState('')
+  const [codigoAplicado, setCodigoAplicado] = useState(null)
+  const [codigoError, setCodigoError]   = useState('')
 
   useEffect(() => {
     setExtras((prev) => {
@@ -198,13 +207,31 @@ export default function Cotizador() {
     }
   }
 
+  const aplicarCodigo = () => {
+    const codigo = CODIGOS_DESCUENTO[codigoInput.trim().toUpperCase()]
+    if (codigo) {
+      setCodigoAplicado({ codigo: codigoInput.trim().toUpperCase(), ...codigo })
+      setCodigoError('')
+    } else {
+      setCodigoError('Código inválido o expirado.')
+    }
+  }
+
+  const quitarCodigo = () => {
+    setCodigoAplicado(null)
+    setCodigoInput('')
+    setCodigoError('')
+  }
+
   const basePrice      = PRECIOS_BASE[loc][pkg]
   const extrasTotal    = EXTRAS.reduce((acc, e) => acc + (extras[e.id] ? e.precio : 0), 0)
   const chisperosTotal = chisperos * 200
   const rosasTotal     = rosas !== 'none'
     ? Math.max(0, ROSAS_PRECIOS[rosas] - (ROSAS_INCLUIDAS_PRECIO[pkg] || 0))
     : 0
-  const total          = basePrice + extrasTotal + chisperosTotal + rosasTotal
+  const subtotal       = basePrice + extrasTotal + chisperosTotal + rosasTotal
+  const descuento      = codigoAplicado ? Math.round(subtotal * codigoAplicado.porcentaje / 100) : 0
+  const total          = subtotal - descuento
 
   const pkgLabel = PKGS.find((p) => p.id === pkg)?.label
   const locLabel = LOCS.find((l) => l.id === loc)?.label
@@ -231,6 +258,7 @@ export default function Cotizador() {
       `Locación: ${locLabel}`,
       `Paquete: ${pkgLabel}`,
       extrasLines.length > 0 ? `\nExtras:\n${extrasLines.join('\n')}` : null,
+      codigoAplicado ? `\nCódigo de descuento: ${codigoAplicado.codigo} (${codigoAplicado.label})\nDescuento: -$${descuento.toLocaleString('es-MX')}` : null,
       `\nTotal estimado: $${total.toLocaleString('es-MX')} MXN`,
       `\n¿Tienen disponibilidad? ¿Podrían darme más información?`,
     ].filter((l) => l !== null).join('\n')
@@ -392,6 +420,46 @@ export default function Cotizador() {
                   Pregunta por otras opciones de flores.
                 </p>
             </div>
+
+            {/* Código de descuento */}
+            <div className="pt-2 border-t border-charcoal/8">
+              <p className="text-xs font-semibold tracking-wide text-charcoal/50 uppercase mb-3">Código de descuento</p>
+              {codigoAplicado ? (
+                <div className="flex items-center justify-between bg-brand/8 border border-brand/20 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Tag size={14} className="text-brand" strokeWidth={2} />
+                    <span className="text-sm font-semibold text-brand">{codigoAplicado.codigo}</span>
+                    <span className="text-xs text-charcoal/50">· {codigoAplicado.label}</span>
+                  </div>
+                  <button onClick={quitarCodigo} className="text-charcoal/30 hover:text-charcoal/60 transition-colors">
+                    <X size={15} strokeWidth={2} />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={codigoInput}
+                    onChange={(e) => { setCodigoInput(e.target.value.toUpperCase()); setCodigoError('') }}
+                    onKeyDown={(e) => e.key === 'Enter' && aplicarCodigo()}
+                    placeholder="INGRESA TU CÓDIGO"
+                    className="flex-1 bg-white border border-charcoal/10 rounded-xl px-4 py-3 text-sm text-charcoal
+                      font-medium tracking-wider placeholder-charcoal/25 focus:outline-none focus:ring-2
+                      focus:ring-brand/30 focus:border-brand/40 transition-all uppercase"
+                  />
+                  <button
+                    onClick={aplicarCodigo}
+                    className="px-5 py-3 bg-charcoal text-white text-sm font-semibold rounded-xl
+                      hover:bg-charcoal/80 active:scale-[0.97] transition-all whitespace-nowrap"
+                  >
+                    Aplicar
+                  </button>
+                </div>
+              )}
+              {codigoError && (
+                <p className="mt-2 text-xs text-rose">{codigoError}</p>
+              )}
+            </div>
           </div>
 
           {/* Right: Price summary */}
@@ -429,6 +497,15 @@ export default function Cotizador() {
                   <div className="flex justify-between text-sm">
                     <span className="text-white/50">Rosas ({rosas})</span>
                     <span className="text-white font-medium">+${rosasTotal.toLocaleString('es-MX')}</span>
+                  </div>
+                )}
+                {descuento > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-white/50 flex items-center gap-1.5">
+                      <Tag size={12} strokeWidth={2} className="text-brand/70" />
+                      Descuento ({codigoAplicado.porcentaje}%)
+                    </span>
+                    <span className="text-brand font-medium">-${descuento.toLocaleString('es-MX')}</span>
                   </div>
                 )}
                 <div className="flex justify-between text-sm border-t border-white/10 pt-3 mt-1">
